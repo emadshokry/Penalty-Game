@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Penalty Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --pink-deep: #0d0510;
+    --pink-neon: #ff2d78;
+    --pink-soft: #ff6eb4;
+    --pink-pale: #ffd6e8;
+    --gold: #ffd700;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  #app {
+    width: 100vw; height: 100vh;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── BACKGROUNDS ── */
+  #bg-football {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 100%, #1a5c1a 0%, #0f3d0f 60%, #0a2a0a 100%);
+    transition: opacity 2s ease;
+  }
+
+  .grass-lines {
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(90deg, transparent, transparent 48px, rgba(255,255,255,0.03) 48px, rgba(255,255,255,0.03) 50px),
+      repeating-linear-gradient(180deg, transparent, transparent 48px, rgba(255,255,255,0.03) 48px, rgba(255,255,255,0.03) 50px);
+  }
+
+  #bg-romantic {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(255,45,120,0.18) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(255,110,180,0.14) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(255,26,108,0.09) 0%, transparent 70%),
+      linear-gradient(135deg, #0d0510 0%, #130818 50%, #0a0612 100%);
+    opacity: 0;
+    transition: opacity 2.2s ease;
+  }
+
+  .pulse-bg { animation: pulseBg 4s ease-in-out infinite; }
+  @keyframes pulseBg {
+    0%, 100% { filter: brightness(1); }
+    50%       { filter: brightness(1.09); }
+  }
+
+  /* ── HEARTS ── */
+  #hearts-container {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+
+  .heart {
+    position: absolute;
+    bottom: -60px;
+    animation: floatHeart linear infinite;
+    opacity: 0;
+  }
+
+  @keyframes floatHeart {
+    0%   { transform: translateY(0) rotate(0deg) scale(0.8); opacity: 0; }
+    10%  { opacity: 0.75; }
+    90%  { opacity: 0.45; }
+    100% { transform: translateY(-115vh) rotate(380deg) scale(1.3); opacity: 0; }
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.8s ease;
+    padding: 20px; text-align: center;
+  }
+  .screen.active { opacity: 1; pointer-events: all; }
+
+  /* ── PENALTY ── */
+  .penalty-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-weight: 900; color: #fff;
+    text-shadow: 0 0 30px rgba(255,220,0,0.8), 0 2px 8px rgba(0,0,0,0.8);
+    margin-bottom: 8px; letter-spacing: 2px;
+  }
+
+  .penalty-sub {
+    color: rgba(255,255,255,0.6);
+    font-size: clamp(0.85rem, 2.5vw, 1rem);
+    margin-bottom: 28px; font-weight: 300; letter-spacing: 1px;
+  }
+
+  .goal-wrapper {
+    position: relative;
+    width: min(480px, 90vw);
+    aspect-ratio: 16/9;
+  }
+
+  .goal-post {
+    position: absolute; inset: 0;
+    border: 4px solid #fff; border-bottom: none; border-radius: 4px 4px 0 0;
+    box-shadow: 0 0 20px rgba(255,255,255,0.4), inset 0 0 40px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .goal-net {
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 30px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 30px);
+  }
+
+  .target-circle {
+    position: absolute;
+    width: clamp(48px, 12vw, 68px); height: clamp(48px, 12vw, 68px);
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.1);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(20px, 5vw, 28px);
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 0 15px rgba(255,255,255,0.15);
+  }
+  .target-circle:hover {
+    background: rgba(255,255,255,0.25); transform: scale(1.1);
+    border-color: rgba(255,255,0,0.8); box-shadow: 0 0 25px rgba(255,255,0,0.4);
+  }
+  .target-circle:active { transform: scale(0.95); }
+
+  .tc-tl { top: 10%; left: 8%; }
+  .tc-tr { top: 10%; right: 8%; }
+  .tc-bl { bottom: 8%; left: 8%; }
+  .tc-br { bottom: 8%; right: 8%; }
+
+  .troll-msg {
+    margin-top: 20px;
+    font-size: clamp(0.95rem, 3vw, 1.15rem);
+    color: #ffcc00; font-weight: 500;
+    opacity: 0; transition: opacity 0.4s ease;
+    text-shadow: 0 0 10px rgba(255,200,0,0.6);
+    min-height: 28px;
+  }
+  .troll-msg.show { opacity: 1; }
+
+  .win-msg {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 6vw, 2.8rem); font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 40px rgba(255,215,0,0.9), 0 0 80px rgba(255,215,0,0.4);
+    opacity: 0; transition: opacity 0.6s ease; margin-top: 24px;
+  }
+  .win-msg.show { opacity: 1; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    15% { transform: translateX(-10px) rotate(-2deg); }
+    30% { transform: translateX(10px) rotate(2deg); }
+    45% { transform: translateX(-8px); }
+    60% { transform: translateX(8px); }
+    75% { transform: translateX(-4px); }
+    90% { transform: translateX(4px); }
+  }
+  .shake { animation: shake 0.55s ease; }
+
+  @keyframes zoomOut {
+    0%   { transform: scale(1); opacity: 1; }
+    55%  { transform: scale(2.2); opacity: 0; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+  .zoom-out { animation: zoomOut 1.4s cubic-bezier(.4,0,.2,1) forwards; }
+
+  /* ── BUTTONS ── */
+  .btn-glow {
+    padding: 14px 36px; border: none; border-radius: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(0.95rem, 2.5vw, 1.1rem); font-weight: 500;
+    cursor: pointer; letter-spacing: 0.5px;
+    transition: all 0.3s ease; position: relative; overflow: visible;
+  }
+  .btn-glow::after {
+    content: ''; position: absolute; inset: -2px; border-radius: 52px;
+    background: inherit; filter: blur(14px); opacity: 0.45; z-index: -1;
+    transition: opacity 0.3s;
+  }
+  .btn-glow:hover::after { opacity: 0.9; }
+  .btn-glow:hover { transform: translateY(-2px) scale(1.04); }
+  .btn-glow:active { transform: scale(0.97); }
+
+  .btn-gold { background: linear-gradient(135deg,#ffd700,#ffaa00); color:#1a1a1a; box-shadow:0 4px 24px rgba(255,215,0,.4); }
+  .btn-pink { background: linear-gradient(135deg,#ff2d78,#ff6eb4); color:#fff; box-shadow:0 4px 24px rgba(255,45,120,.5); }
+  .btn-outline-pink {
+    background: transparent; color:#ff6eb4;
+    border: 2px solid #ff6eb4; box-shadow:0 0 15px rgba(255,110,180,.3);
+  }
+  .btn-outline-pink:hover { background:rgba(255,110,180,.15); box-shadow:0 0 30px rgba(255,110,180,.6); }
+  .btn-disabled { background:#2a2a2a; color:#555; cursor:not-allowed; box-shadow:none; }
+  .btn-disabled:hover { transform:none; }
+  .btn-disabled::after { display:none; }
+  .btn-green-glow { background:linear-gradient(135deg,#00e676,#00c853); color:#fff; box-shadow:0 4px 24px rgba(0,230,118,.5); }
+
+  /* ── ROMANTIC SCREEN ── */
+  #screen-romantic {
+    overflow-y: auto; padding: 48px 20px;
+    justify-content: flex-start; align-items: center;
+  }
+  #screen-romantic::-webkit-scrollbar { width: 3px; }
+  #screen-romantic::-webkit-scrollbar-track { background: transparent; }
+  #screen-romantic::-webkit-scrollbar-thumb { background: rgba(255,45,120,0.25); border-radius:2px; }
+
+  .romantic-inner {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 22px;
+    width: 100%; max-width: 640px;
+    padding-bottom: 60px;
+  }
+
+  .birthday-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.7rem, 5vw, 3rem);
+    font-weight: 900; font-style: italic;
+    color: transparent;
+    background: linear-gradient(135deg,#ff6eb4,#ffd6e8,#ff2d78);
+    -webkit-background-clip: text; background-clip: text;
+    filter: drop-shadow(0 0 22px rgba(255,45,120,0.65));
+    opacity: 0; transform: translateY(18px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+  .birthday-title.show { opacity:1; transform:translateY(0); }
+
+  .neon-line {
+    width: 80px; height: 2px;
+    background: linear-gradient(90deg, transparent, #ff2d78, transparent);
+    border-radius: 2px; box-shadow: 0 0 10px #ff2d78;
+    margin: 2px auto;
+  }
+
+  /* ── TYPING ── */
+  .typing-area {
+    min-height: 58px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 20px; width: 100%; max-width: 600px;
+  }
+
+  .typed-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(1rem, 3vw, 1.28rem);
+    color: #ffd6e8; font-weight: 300;
+    text-align: center; line-height: 1.65; letter-spacing: 0.3px;
+  }
+
+  .cursor {
+    display: inline-block; width: 2px; height: 1.2em;
+    background: #ff6eb4; margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 0.75s step-end infinite;
+    box-shadow: 0 0 8px #ff6eb4;
+  }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+  /* ── REASONS ── */
+  .reasons-list {
+    display: flex; flex-direction: column; gap: 13px;
+    width: 100%; max-width: 580px; padding: 0 14px;
+  }
+
+  .reason-item {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(0.9rem, 2.5vw, 1.05rem);
+    color: #ffd6e8; text-align: left;
+    opacity: 0; transform: translateX(-18px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    padding: 10px 16px;
+    border-left: 2px solid rgba(255,110,180,0.45);
+    background: rgba(255,45,120,0.06);
+    border-radius: 0 8px 8px 0;
+  }
+  .reason-item.visible { opacity:1; transform:translateX(0); }
+  .reason-item strong { color:#ff6eb4; font-weight:600; }
+
+  /* ── SLIDER ── */
+  .slider-container { width:100%; max-width:420px; padding:0 20px; }
+
+  .slider-label {
+    color:#ffd6e8; font-size:clamp(0.85rem,2.5vw,1rem);
+    margin-bottom:14px; font-weight:300; text-align:center;
+  }
+
+  .slider-value {
+    font-family:'Playfair Display', serif;
+    font-size:clamp(2.8rem,9vw,4.5rem); font-weight:900;
+    color:transparent;
+    background:linear-gradient(135deg,#ff2d78,#ff6eb4);
+    -webkit-background-clip:text; background-clip:text;
+    filter:drop-shadow(0 0 20px rgba(255,45,120,0.75));
+    text-align:center; margin-bottom:14px;
+    transition:all 0.2s ease;
+  }
+
+  input[type="range"] {
+    -webkit-appearance:none; width:100%; height:6px;
+    border-radius:3px; background:rgba(255,255,255,0.1);
+    outline:none; margin-bottom:28px; cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(135deg,#ff2d78,#ff6eb4);
+    box-shadow:0 0 15px rgba(255,45,120,0.7); cursor:pointer; transition:transform .2s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.2); }
+  input[type="range"]::-moz-range-thumb {
+    width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(135deg,#ff2d78,#ff6eb4); border:none; cursor:pointer;
+  }
+
+  /* ── ROMANTIC SECTION WRAPPER ── */
+  .romantic-section {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; width:100%; max-width:640px;
+    opacity:0; transform:translateY(14px);
+    transition:opacity 0.7s ease, transform 0.7s ease;
+  }
+  .romantic-section.visible { opacity:1; transform:translateY(0); }
+
+  .btn-group { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
+
+  /* ── FINAL LOVE ── */
+  .final-love {
+    font-family:'Dancing Script', cursive;
+    font-size:clamp(2rem,7vw,4.5rem); font-weight:700;
+    color:transparent;
+    background:linear-gradient(135deg,#ff6eb4,#fff,#ff2d78,#ffd6e8);
+    background-size:300% 300%;
+    -webkit-background-clip:text; background-clip:text;
+    animation:gradShift 3s ease infinite, lovePulse 2s ease-in-out infinite;
+    text-align:center; padding:0 16px;
+    opacity:0; transform:scale(0.85);
+    transition:opacity 1.2s ease, transform 1.2s ease;
+  }
+  .final-love.show { opacity:1; transform:scale(1); }
+
+  @keyframes gradShift {
+    0%,100%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+  }
+  @keyframes lovePulse {
+    0%,100%{filter:drop-shadow(0 0 18px rgba(255,45,120,.85)) drop-shadow(0 0 40px rgba(255,110,180,.4));}
+    50%{filter:drop-shadow(0 0 38px rgba(255,45,120,1)) drop-shadow(0 0 80px rgba(255,110,180,.75));}
+  }
+
+  @keyframes popIn {
+    0%{transform:scale(0) rotate(-20deg);opacity:0;}
+    70%{transform:scale(1.1) rotate(4deg);}
+    100%{transform:scale(1) rotate(0deg);opacity:1;}
+  }
+  .pop-in { animation:popIn 0.5s cubic-bezier(.34,1.56,.64,1) forwards; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="bg-football"><div class="grass-lines"></div></div>
+  <div id="bg-romantic"></div>
+  <div id="hearts-container"></div>
+
+  <!-- PENALTY SCREEN -->
+  <div class="screen active" id="screen-penalty">
+    <div class="penalty-title">⚽ Penalty Shootout ⚽</div>
+    <div class="penalty-sub">Choose your corner wisely…</div>
+
+    <div class="goal-wrapper" id="goal-wrapper">
+      <div class="goal-post">
+        <div class="goal-net"></div>
+        <div class="target-circle tc-tl" data-corner="tl" onclick="shoot(this)">🎯</div>
+        <div class="target-circle tc-tr" data-corner="tr" onclick="shoot(this)">🎯</div>
+        <div class="target-circle tc-bl" data-corner="bl" onclick="shoot(this)">🎯</div>
+        <div class="target-circle tc-br" data-corner="br" onclick="shoot(this)">🎯</div>
+      </div>
+    </div>
+
+    <div class="troll-msg" id="troll-msg">You can't play football hahaha try again 😂</div>
+    <div class="win-msg" id="win-msg">🏆 Congratulations! 🏆</div>
+    <div id="next-btn-wrap" style="margin-top:18px;opacity:0;transition:opacity 0.7s ease;pointer-events:none;">
+      <button class="btn-glow btn-gold" onclick="startTransition()">Go To Next Level ✨</button>
+    </div>
+  </div>
+
+  <!-- ROMANTIC SCREEN -->
+  <div class="screen" id="screen-romantic">
+    <div class="romantic-inner" id="romantic-inner">
+      <div class="birthday-title" id="birthday-title">🎂Happy Birthday ya Rina🎂</div>
+      <div class="neon-line"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ─── CONSTANTS ───────────────────────────────
+const TYPE_SPEED   = 75;    // ms/char  (~30 wpm average with variance)
+const DELETE_SPEED = 42;    // ms/char  (faster erase)
+const PAUSE_SHOW   = 4000; // 10 seconds — mandatory hold after each typed sentence
+const FINAL_SPEED  = 180;   // ms/char  — dramatically slow for "I loveeeeeeeee you"
+
+// ─── HELPERS ─────────────────────────────────
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function typeText(el, text, speedOverride){
+  const spd = speedOverride || TYPE_SPEED;
+  return new Promise(resolve=>{
+    let i=0; el.textContent='';
+    function next(){
+      if(i<text.length){
+        el.textContent+=text[i++];
+        // slight human variance
+        setTimeout(next, spd + (Math.random()*28-14));
+      } else {
+        resolve();
+      }
+    }
+    next();
+  });
+}
+
+function deleteText(el){
+  return new Promise(resolve=>{
+    function next(){
+      if(el.textContent.length>0){
+        el.textContent=el.textContent.slice(0,-1);
+        setTimeout(next, DELETE_SPEED+(Math.random()*16-8));
+      } else { resolve(); }
+    }
+    next();
+  });
+}
+
+function makeTypingSection(){
+  const wrap=document.createElement('div');
+  wrap.className='typing-area';
+  const span=document.createElement('span');
+  span.className='typed-text';
+  const cursor=document.createElement('span');
+  cursor.className='cursor';
+  wrap.appendChild(span); wrap.appendChild(cursor);
+  return {wrap, span, cursor};
+}
+
+function appendToRomantic(el){
+  document.getElementById('romantic-inner').appendChild(el);
+  setTimeout(()=>{
+    const sc=document.getElementById('screen-romantic');
+    sc.scrollTo({top:sc.scrollHeight, behavior:'smooth'});
+  },80);
+}
+
+function makeSection(){ const s=document.createElement('div'); s.className='romantic-section'; return s; }
+
+// ─── PENALTY ─────────────────────────────────
+let penaltyLocked=false;
+
+function shoot(el){
+  if(penaltyLocked) return;
+  if(el.dataset.corner==='bl'){
+    penaltyLocked=true;
+    el.style.background='rgba(0,230,118,0.4)';
+    el.style.borderColor='#00e676';
+    el.style.boxShadow='0 0 30px rgba(0,230,118,0.7)';
+    el.innerHTML='✅';
+    document.getElementById('troll-msg').classList.remove('show');
+    setTimeout(()=>{
+      document.getElementById('win-msg').classList.add('show');
+      const w=document.getElementById('next-btn-wrap');
+      w.style.opacity='1'; w.style.pointerEvents='all';
+    },700);
+  } else {
+    const msg=document.getElementById('troll-msg');
+    const goal=document.getElementById('goal-wrapper');
+    msg.classList.add('show');
+    goal.classList.remove('shake'); void goal.offsetWidth; goal.classList.add('shake');
+    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+    el.style.background='rgba(255,50,50,0.35)';
+    el.style.borderColor='rgba(255,80,80,0.8)';
+    setTimeout(()=>{ el.style.background='rgba(255,255,255,0.1)'; el.style.borderColor='rgba(255,255,255,0.6)'; },600);
+  }
+}
+
+// ─── TRANSITION ──────────────────────────────
+function startTransition(){
+  const ps=document.getElementById('screen-penalty');
+  ps.classList.add('zoom-out');
+  setTimeout(()=>{
+    document.getElementById('bg-football').style.opacity='0';
+    document.getElementById('bg-romantic').style.opacity='1';
+    document.getElementById('bg-romantic').classList.add('pulse-bg');
+  },500);
+  setTimeout(()=>{
+    ps.classList.remove('active');
+    document.getElementById('screen-romantic').classList.add('active');
+    startRomanticSequence();
+  },1400);
+}
+
+// ─── HEARTS ──────────────────────────────────
+function startHearts(){
+  const c=document.getElementById('hearts-container');
+  c.style.opacity='1';
+  const em=['❤️','💖','💗','💓','💕','💞','🌸','✨'];
+  function spawn(){
+    const h=document.createElement('div');
+    h.className='heart';
+    h.textContent=em[Math.floor(Math.random()*em.length)];
+    h.style.left=Math.random()*100+'vw';
+    h.style.fontSize=(14+Math.random()*22)+'px';
+    const dur=5+Math.random()*7;
+    h.style.animationDuration=dur+'s';
+    h.style.animationDelay=(Math.random()*1.5)+'s';
+    c.appendChild(h);
+    setTimeout(()=>h.remove(),(dur+3)*1000);
+  }
+  spawn(); setInterval(spawn,650);
+}
+
+// ─── ROMANTIC SEQUENCE ───────────────────────
+async function startRomanticSequence(){
+  await sleep(700);
+
+  // Show birthday title
+  document.getElementById('birthday-title').classList.add('show');
+  await sleep(1200);
+
+  // Shared typing row
+  const {wrap:tw, span:ts} = makeTypingSection();
+  appendToRomantic(tw);
+
+  // ── 4 troll messages: type → hold 10s → delete ──
+  const trollMsgs=[
+    " ",
+    "eh mystnya eh 🙄",
+    "5las kda bgd ma fi4 7aga momyaza 😅",
+    "em4i ba2a yla ro7y a3mly ay 7aga tani 😂",
+    "e7tafly b3ed meladek yla mn hna 👋",
+    "sa7e7 kol sana w anti tyba 🥳",
+    "msta8rba sa7 ? 🤯 ",
+    "5las h3mlk 7aga momyza 😁"
+  ];
+
+  for(const msg of trollMsgs){
+    await sleep(300);
+    await typeText(ts, msg);
+    await sleep(5000);   // hold 10 seconds
+    await deleteText(ts);
+    await sleep(300);
+  }
+
+  tw.remove();
+  await sleep(500);
+
+  // ── "7aga momyza" button ──
+  await showMomyazaButton();
+}
+
+// ─────────────────────────────────────────────
+async function showMomyazaButton(){
+  const sec=makeSection();
+  const btn=document.createElement('button');
+  btn.className='btn-glow btn-pink pop-in';
+  btn.textContent='✨ 7aga momyza ✨';
+  btn.onclick=()=>onMomyazaClick(sec,btn);
+  sec.appendChild(btn);
+  appendToRomantic(sec);
+  await sleep(80);
+  sec.classList.add('visible');
+}
+
+async function onMomyazaClick(sec,btn){
+  btn.disabled=true; btn.style.opacity='0.5';
+  await sleep(250);
+
+  // Question
+  const qSec=makeSection();
+  qSec.style.gap='18px';
+  appendToRomantic(qSec);
+  await sleep(80);
+  qSec.classList.add('visible');
+
+  const qText=document.createElement('div');
+  qText.className='typed-text';
+  qText.style.fontSize='clamp(1rem,3vw,1.22rem)';
+  qText.style.color='#ffd6e8';
+  const qCursor=document.createElement('span');
+  qCursor.className='cursor';
+  qSec.appendChild(qText); qSec.appendChild(qCursor);
+
+  await typeText(qText,'Do you want to know why you are my fav? 💭');
+  await sleep(100);   // hold 10 seconds
+
+  qCursor.remove();
+
+  // Yes / No
+  const bg=document.createElement('div');
+  bg.className='btn-group';
+  const yBtn=document.createElement('button'); yBtn.className='btn-glow btn-pink'; yBtn.textContent='Yes 💕';
+  const nBtn=document.createElement('button'); nBtn.className='btn-glow btn-outline-pink'; nBtn.textContent='No 😒';
+  bg.appendChild(yBtn); bg.appendChild(nBtn);
+  qSec.appendChild(bg);
+
+  const handle=()=>{ yBtn.disabled=true; nBtn.disabled=true; yBtn.style.opacity='0.5'; nBtn.style.opacity='0.5'; bg.remove(); afterChoice(); };
+  yBtn.onclick=handle; nBtn.onclick=handle;
+}
+
+async function afterChoice(){
+  const {wrap:tw,span:ts}=makeTypingSection();
+  appendToRomantic(tw);
+  await sleep(300);
+
+  // "okay i tell you any way"
+  await typeText(ts,'okay i tell you any way 😏');
+  await sleep(PAUSE_SHOW);
+  await deleteText(ts);
+  await sleep(350);
+
+  // "let me think ...."
+  await typeText(ts,'let me think ....');
+  await sleep(8000);
+  await deleteText(ts);
+  await sleep(350);
+
+  // "mafi4 7aga momyza"
+  await typeText(ts,'mafi4 7aga momyza fyk el sara7a kda 😜');
+  await sleep(3000);
+  await deleteText(ts);
+  await sleep(300);
+
+  tw.remove();
+  await showReasons();
+}
+
+async function showReasons(){
+  const neonLine=document.createElement('div');
+  neonLine.className='neon-line';
+  appendToRomantic(neonLine);
+
+  const reasonsSec=makeSection();
+  const list=document.createElement('div');
+  list.className='reasons-list';
+  reasonsSec.appendChild(list);
+  appendToRomantic(reasonsSec);
+  await sleep(80);
+  reasonsSec.classList.add('visible');
+
+  const reasons=[
+    ['First','anti bthtmi bel tafasel 🔍'],
+    ['Second','fe common interest kter 🎯'],
+    ['Third','you are smart 🧠'],
+    ['Fourth','4atra f el drasa w de 7aga 7lwa bgd 📚✨'],
+    ['Fifth','raya2a at all 😌💫'],
+    ['sixth','bnt cool kda w zy el amr 🌕']
+    
+
+  ];
+
+  for(const [label,text] of reasons){
+    await sleep(500);
+    const item=document.createElement('div');
+    item.className='reason-item';
+    item.innerHTML=`<strong>${label} :</strong> <span class="typed-reason"></span><span class="cursor" style="height:1em;width:1.5px;"></span>`;
+    list.appendChild(item);
+    await sleep(40);
+    item.classList.add('visible');
+
+    const typedEl=item.querySelector('.typed-reason');
+    const cur=item.querySelector('.cursor');
+    await typeText(typedEl,text);
+    cur.remove();
+
+    document.getElementById('screen-romantic').scrollTo({top:99999,behavior:'smooth'});
+  }
+
+  // Hearts begin softly
+  startHearts();
+
+  // Hold all reasons visible for 10 seconds before rating button
+  await sleep(PAUSE_SHOW);
+  await showRatingBtn();
+}
+
+async function showRatingBtn(){
+  const sec=makeSection();
+  const btn=document.createElement('button');
+  btn.className='btn-glow btn-pink pop-in';
+  btn.textContent='⭐ Rate me from 1 to 10 ⭐';
+  btn.onclick=()=>showSlider(btn);
+  sec.appendChild(btn);
+  appendToRomantic(sec);
+  await sleep(80);
+  sec.classList.add('visible');
+}
+
+async function showSlider(triggerBtn){
+  triggerBtn.disabled=true; triggerBtn.style.opacity='0.5';
+  await sleep(250);
+
+  const sliderSec=makeSection();
+  sliderSec.style.gap='10px'; sliderSec.style.width='100%'; sliderSec.style.maxWidth='420px'; sliderSec.style.padding='0 20px';
+
+  const lbl=document.createElement('div'); lbl.className='slider-label'; lbl.textContent='Slide to rate me 💕';
+  const val=document.createElement('div'); val.className='slider-value'; val.textContent='9';
+
+  const slider=document.createElement('input');
+  slider.type='range'; slider.min=1; slider.max=10; slider.value=9; slider.style.width='100%';
+
+  const sub=document.createElement('button');
+  sub.className='btn-glow btn-disabled'; sub.textContent='Submit 🔒'; sub.disabled=true;
+
+  slider.oninput=()=>{
+    const v=parseInt(slider.value); val.textContent=v;
+    if(v===10){ sub.className='btn-glow btn-green-glow'; sub.disabled=false; sub.textContent='Submit ✅'; }
+    else { sub.className='btn-glow btn-disabled'; sub.disabled=true; sub.textContent='Submit 🔒'; }
+  };
+
+  sub.onclick=()=>{
+    if(parseInt(slider.value)!==10) return;
+    sliderSec.style.opacity='0.35'; sliderSec.style.pointerEvents='none';
+    afterRating();
+  };
+
+  sliderSec.appendChild(lbl); sliderSec.appendChild(val); sliderSec.appendChild(slider); sliderSec.appendChild(sub);
+  appendToRomantic(sliderSec);
+  await sleep(80);
+  sliderSec.classList.add('visible');
+  document.getElementById('screen-romantic').scrollTo({top:99999,behavior:'smooth'});
+}
+
+async function afterRating(){
+  const {wrap:tw,span:ts}=makeTypingSection();
+  appendToRomantic(tw);
+  document.getElementById('screen-romantic').scrollTo({top:99999,behavior:'smooth'});
+  await sleep(400);
+
+  await typeText(ts,'ohhh edtiny rate 10 thank you bgd 💝');
+  await sleep(PAUSE_SHOW);
+  await deleteText(ts);
+  await sleep(400);
+  // "5las kda bgd el mara de" — hold 10 seconds
+  await typeText(ts,'5las kda bgd el mara de 👋');
+  await sleep(PAUSE_SHOW);
+  await deleteText(ts);
+  await sleep(400);
+
+  // "anti lesa mawgooda ?" — hold 10 seconds
+  await typeText(ts,'anti lesa mawgooda ? 😒');
+  await sleep(PAUSE_SHOW);
+  await deleteText(ts);
+  await sleep(400);
+
+  // "em4i ba2a" — hold 10 seconds
+  await typeText(ts,'em4i ba2a 👋');
+  await sleep(PAUSE_SHOW);
+  await deleteText(ts);
+  await sleep(300);
+
+  tw.remove();
+
+  // Wait 10 seconds before final message
+  await sleep(PAUSE_SHOW);
+  await showFinalLove();
+}
+
+async function showFinalLove(){
+  const neonLine=document.createElement('div');
+  neonLine.className='neon-line';
+  appendToRomantic(neonLine);
+  await sleep(400);
+
+  // Final message uses its own typing area with the cursor visible throughout
+  const finalWrap=document.createElement('div');
+  finalWrap.style.cssText='display:flex;align-items:center;justify-content:center;padding:10px 16px;';
+  const finalSpan=document.createElement('span');
+  finalSpan.className='final-love';
+  finalSpan.style.opacity='1'; finalSpan.style.transform='scale(1)';
+  finalSpan.style.transition='none';
+  finalSpan.textContent='';
+  const finalCursor=document.createElement('span');
+  finalCursor.className='cursor';
+  finalCursor.style.width='3px'; finalCursor.style.height='1em';
+  finalCursor.style.background='#ff6eb4';
+  finalWrap.appendChild(finalSpan);
+  finalWrap.appendChild(finalCursor);
+  appendToRomantic(finalWrap);
+  document.getElementById('screen-romantic').scrollTo({top:99999,behavior:'smooth'});
+
+  // Type dramatically slow
+  await typeText(finalSpan,'I loveeeeeeee you !!!', FINAL_SPEED);
+
+  // Keep cursor blinking forever — scene stays permanent
+  // Cursor already blinks via CSS animation, leave it
+
+  // Intensify hearts
+  const c=document.getElementById('hearts-container');
+  for(let i=0;i<12;i++){
+    setTimeout(()=>{
+      const h=document.createElement('div'); h.className='heart';
+      h.textContent=['❤️','💖','💗','💓','💕','💞'][Math.floor(Math.random()*6)];
+      h.style.left=Math.random()*100+'vw';
+      h.style.fontSize=(22+Math.random()*24)+'px';
+      const dur=4+Math.random()*5;
+      h.style.animationDuration=dur+'s';
+      c.appendChild(h);
+      // don't remove — let them loop or time out
+      setTimeout(()=>h.remove(),(dur+2)*1000);
+    },i*180);
+  }
+}
+</script>
+</body>
+</html>
